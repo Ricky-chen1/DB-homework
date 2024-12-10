@@ -62,3 +62,4 @@ def login_view(request):
             return JsonResponse({"code": 1, "msg": "用户名或密码错误"})
 
     return JsonResponse({"code": 1, "msg": "无效的请求方法"})
+

@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
+import Search from '@/components/Search.vue';
 
-// 用户登录状态和书籍数据
-const isLoggedIn = ref(false); // 模拟用户登录状态
+// 书籍数据及搜索过滤
 const books = ref([]);
+const searchQuery = ref('');
 const loading = ref(true);
 const router = useRouter();
 
-// 模拟获取登录信息
-const fetchUserStatus = async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/user/status`);
-    isLoggedIn.value = response.data.isLoggedIn;
-  } catch (error) {
-    console.error('无法获取用户登录状态:', error);
-    isLoggedIn.value = false;
+const filteredBooks = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return books.value;
   }
-};
+  return books.value.filter((book) =>
+    book.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    book.author.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
 
 // 获取书籍数据
 const fetchBooks = async () => {
@@ -34,38 +34,27 @@ const fetchBooks = async () => {
 
 // 页面加载时获取数据
 onMounted(() => {
-  const user = localStorage.getItem('user');  // 从 localStorage 获取登录状态
-  if (user) {
-    isLoggedIn.value = true;  // 如果有用户信息，设置为已登录
-  } else {
-    isLoggedIn.value = false;  // 未登录
-    router.push('/login');  // 重定向到登录页面
-  }
-
-  fetchUserStatus();
   fetchBooks();
 });
 
-// 点击查看书籍详情
+// 查看书籍详情
 const viewBookDetail = (bookId: string) => {
-  // 跳转到书籍详情页
-  console.log('查看书籍详情', bookId);
+  router.push(`/book/${bookId}`);
 };
 </script>
 
 <template>
   <div class="book-list">
     <div class="container">
-      <h1 class="page-title">Book List</h1>
+      <!-- 页标题 -->
+      <h1 class="page-title">二手书籍列表</h1>
 
-      <!-- 登录提示 -->
-      <div v-if="!isLoggedIn" class="login-prompt">
-        <p>Please log in to view the full book list.</p>
-      </div>
+      <!-- 搜索框 -->
+      <Search v-model="searchQuery" />
 
       <!-- 书籍列表 -->
-      <div v-if="isLoggedIn && !loading" class="book-grid">
-        <div v-for="book in books" :key="book.id" class="book-card">
+      <div v-if="!loading" class="book-grid">
+        <div v-for="book in filteredBooks" :key="book.id" class="book-card" @click="viewBookDetail(book.id)">
           <img 
             v-if="book.image" 
             :src="book.image" 
@@ -73,24 +62,19 @@ const viewBookDetail = (bookId: string) => {
             class="book-cover" 
           />
           <h2 class="book-title">{{ book.title }}</h2>
-          <p class="book-author">Author: {{ book.author }}</p>
-          <p class="book-price">Price: ${{ book.price }}</p>
-          <button 
-            @click="viewBookDetail(book.id)" 
-            class="view-details-button">
-            查看书籍详情
-          </button>
+          <p class="book-author">作者: {{ book.author }}</p>
+          <p class="book-price">价格: ¥{{ book.price }}</p>
         </div>
       </div>
 
       <!-- 加载状态 -->
       <div v-else-if="loading" class="loading-message">
-        Loading books... Please wait.
+        正在加载图书数据，请稍候...
       </div>
 
       <!-- 无书籍提示 -->
-      <div v-else class="loading-message">
-        暂无可购买书籍，请等待他人发布
+      <div v-else class="no-books-message">
+        暂无图书信息，试试其他搜索条件。
       </div>
     </div>
   </div>
@@ -99,7 +83,7 @@ const viewBookDetail = (bookId: string) => {
 <style scoped>
 .book-list {
   padding: 20px;
-  background-color: #f4f4f9;
+  background: linear-gradient(135deg, #f4f4f9, #e6e6fa);
   min-height: 100vh;
 }
 
@@ -112,10 +96,11 @@ const viewBookDetail = (bookId: string) => {
 }
 
 .page-title {
-  font-size: 2rem;
-  margin-bottom: 20px;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
   color: #333;
   text-align: center;
+  font-weight: bold;
 }
 
 .book-grid {
@@ -127,65 +112,50 @@ const viewBookDetail = (bookId: string) => {
 
 .book-card {
   background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   text-align: center;
+  cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .book-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
 }
 
 .book-cover {
-  width: 100px;
+  width: 120px;
   height: auto;
-  border-radius: 5px;
   margin-bottom: 15px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .book-title {
   font-size: 1.2rem;
-  margin-bottom: 10px;
-  color: #444;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #222;
 }
 
 .book-author,
 .book-price {
-  font-size: 0.9rem;
-  margin-bottom: 5px;
-}
-
-.view-details-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.view-details-button:hover {
-  background-color: #0056b3;
-}
-
-.loading-message {
   font-size: 1rem;
+  margin-bottom: 5px;
   color: #555;
-  text-align: center;
 }
 
-.login-prompt {
+.loading-message,
+.no-books-message {
   font-size: 1.2rem;
-  color: #d9534f;
+  color: #666;
   text-align: center;
   margin-top: 30px;
+  padding: 20px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
 </style>

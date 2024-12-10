@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 // 跳转到交易页面
 const router = useRouter();
 const goToTradePage = () => {
-  router.push("/trade");
+  router.push("/booklist");
 };
 
 // 自动播放
@@ -19,10 +19,11 @@ onUnmounted(() => {
 
 // 轮播图索引
 const currentIndex = ref(0);
+// 图片数据和逻辑
 const images = [
-  "@/assets/book1.jpg",
-  "@/assets/book2.jpg",
-  "@/assets/book3.jpg",
+  new URL('@/assets/images1.svg', import.meta.url).href,
+  new URL('@/assets/images2.svg', import.meta.url).href,
+  new URL('@/assets/images3.svg', import.meta.url).href,
 ];
 
 // 自动切换下一张图
@@ -40,17 +41,14 @@ const testimonials = [
   {
     name: "Emily White",
     feedback: "This platform helped me save money and declutter my shelves. Highly recommended!",
-    avatar: new URL("@/assets/user1.png", import.meta.url).href,
   },
   {
     name: "John Smith",
     feedback: "Great way to buy books at a fraction of the cost. The process is seamless and secure.",
-    avatar: new URL("@/assets/user2.png", import.meta.url).href,
   },
   {
     name: "Sophia Lee",
     feedback: "I love how easy it is to sell and buy books here. It’s eco-friendly and efficient!",
-    avatar: new URL("@/assets/user3.png", import.meta.url).href,
   },
 ];
 </script>
@@ -62,7 +60,7 @@ const testimonials = [
       <div class="carousel-content">
         <h1 class="carousel-title">Affordable Reads, Sustainable Choices</h1>
         <p class="carousel-subtitle">Buy and Sell Second-hand Books Easily</p>
-        <button class="start-button" @click="goToTradePage">Start Trading</button>
+        <button class="start-button" @click="goToTradePage">开始浏览</button>
       </div>
       <img class="carousel-image" :src="images[currentIndex]" alt="Book Image" />
       <div class="carousel-controls">
@@ -88,17 +86,17 @@ const testimonials = [
     <!-- 特色模块 -->
     <section class="features-section">
       <div class="feature-card">
-        <img src="../assets/feature1.svg" alt="Easy Transactions" />
+        <img src="../assets/icon1.svg" alt="Easy Transactions" />
         <h3>Easy Transactions</h3>
         <p>Secure and hassle-free buying and selling of books.</p>
       </div>
       <div class="feature-card">
-        <img src="../assets/feature2.svg" alt="Wide Selection" />
+        <img src="../assets/icon2.svg" alt="Wide Selection" />
         <h3>Wide Selection</h3>
         <p>Browse a diverse range of books from various genres and categories.</p>
       </div>
       <div class="feature-card">
-        <img src="../assets/feature3.svg" alt="Eco-Friendly" />
+        <img src="../assets/icon3.svg" alt="Eco-Friendly" />
         <h3>Eco-Friendly</h3>
         <p>Promote sustainability by reusing books and reducing waste.</p>
       </div>
@@ -113,7 +111,6 @@ const testimonials = [
           :key="index" 
           class="testimonial-card"
         >
-          <img :src="testimonial.avatar" alt="User Avatar" class="testimonial-avatar" />
           <p class="testimonial-feedback">{{ testimonial.feedback }}</p>
           <p class="testimonial-name">- {{ testimonial.name }}</p>
         </div>

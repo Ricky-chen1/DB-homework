@@ -8,9 +8,9 @@
         <div class="navy">
           <ul>
             <li><RouterLink to="/home" active-class="active">首页</RouterLink></li>
-            <li><RouterLink to="/bookList" active-class="active">书籍</RouterLink></li>
+            <li><RouterLink to="/bookList" active-class="active">图书</RouterLink></li>
             <li><RouterLink to="/order" active-class="active">订单</RouterLink></li>
-            <li><RouterLink to="/publish" active-class="active">出售</RouterLink></li>
+            <li><RouterLink to="/bookshelf" active-class="active">我的书架</RouterLink></li>
             <li v-if="!isLoggedIn"><RouterLink to="/login" active-class="active">登录</RouterLink></li>
           </ul>
           <div class="tubiao" v-if="isLoggedIn">

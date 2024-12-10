@@ -1,4 +1,4 @@
-import json
+from django.http import QueryDict
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -7,6 +7,10 @@ from django.utils.timezone import now
 from .models import Book, Category
 from rest_framework_simplejwt.tokens import AccessToken
 from utils.jwt import verify_and_refresh_token
+from rest_framework.parsers import MultiPartParser
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.response import Response
+from rest_framework import status
 
 # Define Book creation form
 class CreateBookForm(ModelForm):
@@ -152,3 +156,88 @@ def book_detail_view(request, book_id):
             return JsonResponse({"code": 1, "msg": f"Error: {str(e)}"})
 
     return JsonResponse({"code": 1, "msg": "Invalid request method"})
+
+# 定义更新书籍的表单
+class UpdateBookForm(ModelForm):
+    class Meta:
+        model = Book
+        fields = ['description']
+
+@csrf_exempt
+def update_book_view(request, book_id):
+    # Verify and refresh token
+    try:
+        token = verify_and_refresh_token(request)
+        access_token = AccessToken(token)
+        user_id = access_token['user_id']  # 从 token 中获取 user_id
+    except Exception as e:
+        return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
+
+    # 检查书籍是否存在
+    try:
+        book = Book.objects.get(id=book_id)
+    except Book.DoesNotExist:
+        return JsonResponse({"code": 1, "msg": "书籍不存在"}, status=404)
+
+    # 从表单数据中获取字段
+    description = request.POST.get('description')
+    categories = request.POST.getlist('categories')  # 从表单获取类别列表
+
+    # 创建表单实例并验证
+    form_data = {'description': description}
+    form = UpdateBookForm(form_data, instance=book)
+
+    if form.is_valid():
+        book = form.save(commit=False)
+        book.save()  # 保存更新的书籍描述
+
+        # 更新书籍类别
+        if categories:
+            category_objects = []
+            for name in categories:
+                category, _ = Category.objects.get_or_create(name=name)  # 创建或获取类别
+                category_objects.append(category)
+
+            book.categories.set(category_objects)  # 更新类别关联
+
+        # 序列化书籍数据
+        book_data = {
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "description": book.description,
+            "price": str(book.price),
+            "status": book.status,
+            "created_at": book.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "categories": [category.name for category in book.categories.all()],
+            "publisher_id": user_id,
+        }
+
+        return JsonResponse({"code": 0, "msg": "书籍更新成功", "data": book_data})
+    else:
+        return JsonResponse({"code": 1, "msg": f"表单验证失败: {form.errors}"})
+
+
+@csrf_exempt
+def delete_book_view(request, book_id):
+    """删除书籍视图"""
+    if request.method == 'DELETE':
+        try:
+            token = verify_and_refresh_token(request)
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # 从 token 中获取 user_id
+        except Exception as e:
+            return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
+
+        try:
+            # 获取书籍
+            book = Book.objects.get(id=book_id)
+            book.delete()  # 删除书籍
+            return JsonResponse({"code": 0, "msg": "书籍删除成功","data":{
+                "publisher_id":user_id,
+                "book_id":book_id,
+            }})
+        except Book.DoesNotExist:
+            return JsonResponse({"code": 1, "msg": "书籍不存在"})
+
+    return JsonResponse({"code": 1, "msg": "无效的请求方法"})
