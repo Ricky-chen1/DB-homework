@@ -32,7 +32,7 @@ const performSearch = async () => {
       type="text" 
       class="search-input" 
       v-model="searchQuery" 
-      placeholder="Search books by title or category..."
+      placeholder="输入书名或者类别搜索..."
     />
     <button class="search-button" @click="performSearch">
       <!-- 使用 iconfont 提供的搜索图标 -->

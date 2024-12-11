@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import request from '@/utils/request'; // 使用封装的 Axios 实例
 import { useRouter } from 'vue-router';
 import Search from '@/components/Search.vue';
+import type { Book, GetBookListResponse } from '@/types'; // 引入类型定义
 
 // 书籍数据及搜索过滤
-const books = ref([]);
+const books = ref<Book[]>([]);
 const searchQuery = ref('');
 const loading = ref(true);
 const router = useRouter();
@@ -23,8 +24,12 @@ const filteredBooks = computed(() => {
 // 获取书籍数据
 const fetchBooks = async () => {
   try {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/book/list`);
-    books.value = response.data.books || [];
+    const response: GetBookListResponse = await request.get('/api/book/list');
+    if (response.code === 0) {
+      books.value = response.data;
+    } else {
+      console.error('获取书籍失败:', response.msg);
+    }
   } catch (error) {
     console.error('无法获取书籍数据:', error);
   } finally {
@@ -38,7 +43,7 @@ onMounted(() => {
 });
 
 // 查看书籍详情
-const viewBookDetail = (bookId: string) => {
+const viewBookDetail = (bookId: number) => {
   router.push(`/book/${bookId}`);
 };
 </script>
@@ -47,23 +52,38 @@ const viewBookDetail = (bookId: string) => {
   <div class="book-list">
     <div class="container">
       <!-- 页标题 -->
-      <h1 class="page-title">二手书籍列表</h1>
+      <h1 class="page-title">查找你喜爱的图书吧！</h1>
 
       <!-- 搜索框 -->
       <Search v-model="searchQuery" />
 
       <!-- 书籍列表 -->
       <div v-if="!loading" class="book-grid">
-        <div v-for="book in filteredBooks" :key="book.id" class="book-card" @click="viewBookDetail(book.id)">
-          <img 
-            v-if="book.image" 
-            :src="book.image" 
-            alt="Book Cover" 
-            class="book-cover" 
+        <div
+          v-for="book in filteredBooks"
+          :key="book.id"
+          class="book-card"
+          @click="viewBookDetail(book.id)"
+        >
+          <img
+            v-if="book.cover_url"
+            :src="book.cover_url"
+            alt="Book Cover"
+            class="book-cover"
           />
           <h2 class="book-title">{{ book.title }}</h2>
           <p class="book-author">作者: {{ book.author }}</p>
           <p class="book-price">价格: ¥{{ book.price }}</p>
+          <div class="book-categories">
+            分类：
+            <span v-for="(category, index) in book.categories" :key="index" class="category">
+              {{ category }}
+            </span>
+          </div>
+          <p v-if="book.status === 'available'" class="book-status available">
+            状态：可购买
+          </p>
+          <p v-else class="book-status unavailable">状态：已售出</p>
         </div>
       </div>
 
@@ -141,10 +161,26 @@ const viewBookDetail = (bookId: string) => {
 }
 
 .book-author,
-.book-price {
+.book-price,
+.book-status {
   font-size: 1rem;
   margin-bottom: 5px;
   color: #555;
+}
+
+.book-categories {
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.category {
+  display: inline-block;
+  background: #eef;
+  padding: 3px 8px;
+  margin: 2px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #334;
 }
 
 .loading-message,
@@ -157,5 +193,13 @@ const viewBookDetail = (bookId: string) => {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+}
+
+.book-status.available {
+  color: green;
+}
+
+.book-status.unavailable {
+  color: red;
 }
 </style>

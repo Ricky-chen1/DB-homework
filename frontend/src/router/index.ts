@@ -11,6 +11,10 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/',
+      redirect: '/home',  // 默认跳转到 /home 路由
+    },
+    {
       path: '/home',
       name: 'home',
       component: Home,
@@ -40,13 +44,11 @@ const router = createRouter({
       path: '/bookshelf',
       name: 'bookshelf',
       component: Bookshelf,
-      children: [
-        {
-          path: 'publish',
-          name: 'bookPublish',
-          component: BookPublish,
-        },
-      ],
+    },
+    {
+      path:'/publish',
+      name:'publish',
+      component: BookPublish,
     },
   ],
 });

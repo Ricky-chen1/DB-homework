@@ -60,7 +60,7 @@ const testimonials = [
       <div class="carousel-content">
         <h1 class="carousel-title">Affordable Reads, Sustainable Choices</h1>
         <p class="carousel-subtitle">Buy and Sell Second-hand Books Easily</p>
-        <button class="start-button" @click="goToTradePage">开始浏览</button>
+        <button class="start-button" @click="goToTradePage">浏览图书</button>
       </div>
       <img class="carousel-image" :src="images[currentIndex]" alt="Book Image" />
       <div class="carousel-controls">
