@@ -1,6 +1,7 @@
 // 定义单本书籍的数据结构
 export interface Book {
     id: number;               // 书籍 ID
+    publisher_id: number,
     title: string;            // 书籍标题
     author: string;           // 作者
     price: string;            // 价格，格式为字符串

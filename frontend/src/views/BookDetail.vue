@@ -11,7 +11,8 @@ const router = useRouter();
 // 获取书籍详情
 const fetchBookDetail = async () => {
   try {
-    const response = await request.get(`/api/book/${route.params.id}`);
+    const response = await request.get(`/api/book/${route.params.id}`,{
+    });
     book.value = response.data || null;
   } catch (error) {
     console.error('获取书籍详情失败:', error);
@@ -21,9 +22,15 @@ const fetchBookDetail = async () => {
 // 跳转至创建订单页面
 const goToOrderCreate = () => {
   if (book.value) {
+    // 传递书籍信息和卖家信息
     router.push({
-      path: '/order/create',
-      query: { bookId: book.value.id, bookTitle: book.value.title },
+    path: '/orderCreate',
+    query: {
+      bookId: book.value.id,
+      bookTitle: book.value.title, // 书名
+      bookPrice: book.value.price, // 传递书的定价
+      publisherId: book.value.publisher_id, // 改为 publisherId
+      },
     });
   }
 };

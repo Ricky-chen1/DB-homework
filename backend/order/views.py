@@ -28,24 +28,26 @@ def create_order_view(request):
 
         # 获取前端请求数据
         book_id = request.POST.get('book_id')
-        price = request.POST.get('price')
-        seller_id = request.POST.get('seller_id')
 
-        if not book_id or not seller_id or not price:
+        if not book_id:
             return JsonResponse({"code": 1, "msg": "请求参数缺失"})
 
-        # 确认图书是否存在
+        # 确认图书是否存在并获取卖家信息
         try:
             book = Book.objects.get(id=book_id, status='available')  # 确保书籍状态可用
+            seller_id = book.publisher_id  # 获取书籍的发布者作为卖家 ID
         except Book.DoesNotExist:
             return JsonResponse({"code": 1, "msg": "书籍不存在或不可用"})
+
+        if user_id == seller_id:
+            return JsonResponse({"code": 1, "msg": "不可购买自己发布的书籍"})
 
         # 构建包含所有字段数据的字典
         order_data = {
             'buyer': user_id,
             'seller': seller_id,
             'book': book_id,
-            'price': price,
+            'price': book.price,  # 直接从书籍信息获取价格
             'status': 'pending',  # 默认状态为待支付
         }
 
@@ -78,21 +80,19 @@ def create_order_view(request):
 
     return JsonResponse({"code": 1, "msg": "无效的请求方法"})
 
-
 @method_decorator(csrf_exempt, name='dispatch')
 def order_list_view(request):
     """订单列表视图"""
     if request.method == 'GET':
         try:
             token = verify_and_refresh_token(request)
-            user_id = token.get('user_id')  # 从 token 中获取 user_id
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # 从 token 中获取 user_id
         except Exception as e:
             return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
 
         # 获取当前用户作为买家或卖家的所有订单
-        orders = Order.objects.filter(buyer_id=user_id).union(
-            Order.objects.filter(seller_id=user_id)
-        ).values(
+        orders = Order.objects.filter(buyer_id=user_id).values(
             'id', 'buyer_id', 'seller_id', 'book_id', 'price', 'status', 'created_at', 'updated_at'
         )
         return JsonResponse({"code": 0, "data": list(orders)})
@@ -106,7 +106,8 @@ def order_detail_view(request, order_id):
     if request.method == 'GET':
         try:
             token = verify_and_refresh_token(request)
-            user_id = token.get('user_id')  # 从 token 中获取 user_id
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # 从 token 中获取 user_id
         except Exception as e:
             return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
 
@@ -122,6 +123,108 @@ def order_detail_view(request, order_id):
 
             return JsonResponse({"code": 0, "data": order})
 
+        except Order.DoesNotExist:
+            return JsonResponse({"code": 1, "msg": "订单不存在"})
+
+    return JsonResponse({"code": 1, "msg": "无效的请求方法"})
+
+@method_decorator(csrf_exempt, name='dispatch')
+def pay_order_view(request):
+    """支付订单视图"""
+    if request.method == 'POST':
+        try:
+            token = verify_and_refresh_token(request)
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # 从 token 中获取 user_id
+        except Exception as e:
+            return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
+
+        # 获取 form-data 中传递的 order_id
+        order_id = request.POST.get('order_id')
+
+        if not order_id:
+            return JsonResponse({"code": 1, "msg": "请求参数缺失: order_id"})
+
+        try:
+            # 查找订单
+            order = Order.objects.get(id=order_id)
+
+            # 确认订单是否属于当前用户（买家）
+            if order.buyer_id != user_id:
+                return JsonResponse({"code": 1, "msg": "无权支付此订单"})
+
+            # 确认订单状态为待支付
+            if order.status != 'pending':
+                return JsonResponse({"code": 1, "msg": "订单状态不允许支付"})
+
+            # 修改订单状态为已支付
+            order.status = 'paid'
+            order.updated_at = now()
+            order.save()
+
+            return JsonResponse({
+                "code": 0,
+                "msg": "订单支付成功",
+                "data": {
+                    "id": order.id,
+                    "buyer_id": order.buyer_id,
+                    "seller_id": order.seller_id,
+                    "book_id": order.book_id,
+                    "price": str(order.price),  # DecimalField 转为字符串
+                    "status": order.status,
+                    "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "updated_at": order.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            })
+        except Order.DoesNotExist:
+            return JsonResponse({"code": 1, "msg": "订单不存在"})
+
+    return JsonResponse({"code": 1, "msg": "无效的请求方法"})
+
+@method_decorator(csrf_exempt, name='dispatch')
+def cancel_order_view(request):
+    """取消订单视图"""
+    if request.method == 'POST':
+        try:
+            token = verify_and_refresh_token(request)
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # 从 token 中获取 user_id
+        except Exception as e:
+            return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
+
+        # 获取 form-data 中传递的 order_id
+        order_id = request.POST.get('order_id')
+
+        if not order_id:
+            return JsonResponse({"code": 1, "msg": "请求参数缺失: order_id"})
+
+        try:
+            # 查找订单
+            order = Order.objects.get(id=order_id)
+
+            # 确认订单是否属于当前用户（买家）
+            if order.buyer_id != user_id:
+                return JsonResponse({"code": 1, "msg": "无权取消此订单"})
+
+            # 修改订单状态为已取消
+            order.status = 'cancelled'
+            order.updated_at = now()
+            order.save()
+
+            return JsonResponse({
+                "code": 0,
+                "msg": "订单已取消",
+                "data": {
+                    "id": order.id,
+                    "buyer_id": order.buyer_id,
+                    "seller_id": order.seller_id,
+                    "book_id": order.book_id,
+                    "price": str(order.price),  # DecimalField 转为字符串
+                    "status": order.status,
+                    "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "updated_at": order.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            })
         except Order.DoesNotExist:
             return JsonResponse({"code": 1, "msg": "订单不存在"})
 

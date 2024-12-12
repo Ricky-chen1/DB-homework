@@ -155,7 +155,8 @@ def book_list_view(request):
         books = Book.objects.prefetch_related('categories') \
             .values(
                 'id', 
-                'title', 
+                'title',
+                'publisher_id', 
                 'author', 
                 'price', 
                 'status', 
@@ -186,7 +187,8 @@ def book_detail_view(request, book_id):
             book = Book.objects.prefetch_related('categories') \
                 .values(
                     'id', 
-                    'title', 
+                    'title',
+                    'publisher_id',
                     'author', 
                     'description', 
                     'price', 
@@ -320,6 +322,7 @@ def search_books_view(request):
         books = books.values(
             'id', 
             'title', 
+            'publisher_id',
             'author', 
             'price', 
             'status', 
@@ -355,6 +358,7 @@ def published_books_view(request):
             .filter(publisher_id=user_id) \
             .values(
                 'id', 
+                'publisher_id',
                 'title', 
                 'author', 
                 'price', 
@@ -391,6 +395,7 @@ def sold_out_books_view(request):
             .filter(publisher_id=user_id, status='sold') \
             .values(
                 'id', 
+                'publisher_id',
                 'title', 
                 'author', 
                 'price', 

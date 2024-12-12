@@ -26,7 +26,6 @@ const fetchPublishedBooks = async () => {
 
     if (response.code === 0) {
       publishedBooks.value = response.data || [];
-      console.log(publishedBooks);
     } else {
       errorMessage.value = response.msg;
     }

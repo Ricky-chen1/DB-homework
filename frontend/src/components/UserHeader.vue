@@ -9,7 +9,7 @@
           <ul>
             <li><RouterLink to="/home" active-class="active">首页</RouterLink></li>
             <li><RouterLink to="/bookList" active-class="active">图书</RouterLink></li>
-            <li><RouterLink to="/order" active-class="active">我的订单</RouterLink></li>
+            <li><RouterLink to="/orderList" active-class="active">我的订单</RouterLink></li>
             <li><RouterLink to="/bookshelf" active-class="active">我的书架</RouterLink></li>
             <li v-if="!isLoggedIn"><RouterLink to="/login" active-class="active">登录</RouterLink></li>
           </ul>

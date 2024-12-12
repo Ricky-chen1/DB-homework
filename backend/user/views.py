@@ -63,3 +63,11 @@ def login_view(request):
 
     return JsonResponse({"code": 1, "msg": "无效的请求方法"})
 
+@csrf_exempt
+def get_user_name(request, user_id):
+    try:
+        # 查询数据库获取用户
+        user = User.objects.get(id=user_id)
+        return JsonResponse({"code": 0, "msg": "success", "username": user.username})
+    except User.DoesNotExist:
+        return JsonResponse({"code": 1, "msg": "用户不存在"})

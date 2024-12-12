@@ -5,6 +5,9 @@ import Login from '@/views/Login.vue';
 import Register from '@/views/Regitser.vue';
 import BookPublish from '@/views/BookPublish.vue';
 import Bookshelf from '@/views/Bookshelf.vue';
+import OrderCreate from '@/views/OrderCreate.vue';
+import OrderList from '@/views/OrderList.vue';
+import OrderDetail from '@/views/OrderDetail.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
@@ -50,6 +53,21 @@ const router = createRouter({
       name:'publish',
       component: BookPublish,
     },
+    {
+      path:'/orderCreate',
+      name:'orderCreate',
+      component: OrderCreate,
+    },
+    {
+      path:'/orderList',
+      name:'orderList',
+      component: OrderList,
+    },
+    {
+      path:'/order/:orderId',
+      name:'orderDetail',
+      component: OrderDetail,
+    }
   ],
 });
 
