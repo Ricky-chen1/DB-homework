@@ -1,45 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import axios from 'axios';
-import { useBackendDataStore } from '@/stores/data';
+import { ref, defineEmits } from 'vue';
 
-// 引用 Pinia store
-const store = useBackendDataStore();
+// 搜索输入内容
 const searchQuery = ref('');
+const emit = defineEmits(['update:modelValue']);
 
-const performSearch = async () => {
-  if (!searchQuery.value.trim()) return;
+// 触发搜索的函数
+const triggerSearch = () => {
+  emit('update:modelValue', searchQuery.value); // 向父组件同步搜索内容
+};
 
-  try {
-    // 发送搜索请求到后端
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/book/search`, {
-      params: {
-        query: searchQuery.value.trim(),
-      },
-    });
-
-    // 将后端返回数据存入 Pinia store
-    store.setBackendData(response.data);
-  } catch (error) {
-    console.error('搜索请求失败:', error);
+// 按下键盘时监听回车键
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    triggerSearch();
   }
 };
 </script>
 
+
 <template>
   <div class="search-bar">
-    <input 
-      type="text" 
-      class="search-input" 
-      v-model="searchQuery" 
+    <!-- 搜索输入框 -->
+    <input
+      type="text"
+      class="search-input"
+      v-model="searchQuery"
       placeholder="输入书名或者类别搜索..."
+      @keydown="handleKeyDown"
     />
-    <button class="search-button" @click="performSearch">
-      <!-- 使用 iconfont 提供的搜索图标 -->
+    <!-- 搜索按钮 -->
+    <button class="search-button" @click="triggerSearch">
       <i class="iconfont icon-sousuo"></i>
     </button>
   </div>
 </template>
+
 
 <style scoped>
 .search-bar {
@@ -59,10 +55,6 @@ const performSearch = async () => {
   font-size: 1rem;
 }
 
-.search-input:focus {
-  border-color: #007bff;
-}
-
 .search-button {
   background-color: #007bff;
   border: none;
@@ -74,15 +66,8 @@ const performSearch = async () => {
   justify-content: center;
 }
 
-.search-button:hover {
-  background-color: #0056b3;
-}
-
 .iconfont {
   font-size: 20px;
   color: white;
 }
 </style>
-
-<!-- 引入 iconfont 样式 -->
-<link rel="stylesheet" href="https://at.alicdn.com/t/c/font_4756601_9mxxkv4q5qo.css">

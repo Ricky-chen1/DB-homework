@@ -1,3 +1,38 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import request from '@/utils/request'; // 使用封装的 Axios 实例
+import type { Book } from '@/pack/book';
+
+const book = ref<Book>(null);
+const route = useRoute();
+const router = useRouter();
+
+// 获取书籍详情
+const fetchBookDetail = async () => {
+  try {
+    const response = await request.get(`/api/book/${route.params.id}`);
+    book.value = response.data || null;
+  } catch (error) {
+    console.error('获取书籍详情失败:', error);
+  }
+};
+
+// 跳转至创建订单页面
+const goToOrderCreate = () => {
+  if (book.value) {
+    router.push({
+      path: '/order/create',
+      query: { bookId: book.value.id, bookTitle: book.value.title },
+    });
+  }
+};
+
+onMounted(() => {
+  fetchBookDetail();
+});
+</script>
+
 <template>
   <div class="book-detail">
     <div class="container">
@@ -17,6 +52,14 @@
           <p class="book-description"><strong>描述:</strong> {{ book.description || '暂无描述信息' }}</p>
           <p class="book-created"><strong>发布时间:</strong> {{ new Date(book.created_at).toLocaleString() }}</p>
         </div>
+
+        <!-- 购买按钮 -->
+        <button 
+          class="buy-button" 
+          @click="goToOrderCreate"
+        >
+          立即购买
+        </button>
       </div>
 
       <!-- 加载状态 -->
@@ -26,29 +69,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import request from '@/utils/request'; // 使用封装的 Axios 实例
-import type {Book} from '@/pack/book'
-
-const book = ref<Book>(null);
-const route = useRoute();
-
-const fetchBookDetail = async () => {
-  try {
-    const response = await request.get(`/api/book/${route.params.id}`);
-    book.value = response.data || null;
-  } catch (error) {
-    console.error('获取书籍详情失败:', error);
-  }
-};
-
-onMounted(() => {
-  fetchBookDetail();
-});
-</script>
 
 <style scoped>
 .book-detail {
@@ -67,6 +87,7 @@ onMounted(() => {
   border-radius: 15px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
   padding: 25px;
+  position: relative;
 }
 
 .book-card {
@@ -118,5 +139,27 @@ onMounted(() => {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.buy-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #ff5722;
+  color: white;
+  padding: 12px 25px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+}
+
+.buy-button:hover {
+  background: #e64a19;
+  box-shadow: 0 6px 15px rgba(255, 87, 34, 0.4);
+  transform: scale(1.05);
 }
 </style>

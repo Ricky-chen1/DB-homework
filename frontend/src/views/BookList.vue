@@ -3,33 +3,44 @@ import { ref, computed, onMounted } from 'vue';
 import request from '@/utils/request'; // 使用封装的 Axios 实例
 import { useRouter } from 'vue-router';
 import Search from '@/components/Search.vue';
-import type { Book, GetBookListResponse } from '@/types'; // 引入类型定义
+import type { Book } from '@/types';
 
 // 书籍数据及搜索过滤
 const books = ref<Book[]>([]);
 const searchQuery = ref('');
+const selectedCategory = ref(''); // 当前选择的类别
 const loading = ref(true);
 const router = useRouter();
 
+// 动态提取类别选项
+const categories = computed(() => {
+  const allCategories = books.value.flatMap((book) => book.categories);
+  return Array.from(new Set(allCategories)); // 去重
+});
+
+// 联合过滤
 const filteredBooks = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return books.value;
-  }
-  return books.value.filter((book) =>
-    book.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-    book.author.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const query = searchQuery.value.trim().toLowerCase();
+  const category = selectedCategory.value;
+
+  return books.value.filter((book) => {
+    const matchesQuery =
+      !query ||
+      book.title.toLowerCase().includes(query) ||
+      book.author.toLowerCase().includes(query);
+
+    const matchesCategory =
+      !category || book.categories.includes(category);
+
+    return matchesQuery && matchesCategory;
+  });
 });
 
 // 获取书籍数据
 const fetchBooks = async () => {
   try {
-    const response: GetBookListResponse = await request.get('/api/book/list');
-    if (response.code === 0) {
-      books.value = response.data;
-    } else {
-      console.error('获取书籍失败:', response.msg);
-    }
+    const response = await request.get('/api/book/list');
+    books.value = response.data;
   } catch (error) {
     console.error('无法获取书籍数据:', error);
   } finally {
@@ -57,6 +68,17 @@ const viewBookDetail = (bookId: number) => {
       <!-- 搜索框 -->
       <Search v-model="searchQuery" />
 
+      <!-- 类别过滤 -->
+      <div class="category-filter">
+        <label for="category">按类别筛选：</label>
+        <select id="category" v-model="selectedCategory">
+          <option value="">全部</option>
+          <option v-for="category in categories" :key="category" :value="category">
+            {{ category }}
+          </option>
+        </select>
+      </div>
+
       <!-- 书籍列表 -->
       <div v-if="!loading" class="book-grid">
         <div
@@ -73,17 +95,12 @@ const viewBookDetail = (bookId: number) => {
           />
           <h2 class="book-title">{{ book.title }}</h2>
           <p class="book-author">作者: {{ book.author }}</p>
-          <p class="book-price">价格: ¥{{ book.price }}</p>
           <div class="book-categories">
             分类：
             <span v-for="(category, index) in book.categories" :key="index" class="category">
               {{ category }}
             </span>
           </div>
-          <p v-if="book.status === 'available'" class="book-status available">
-            状态：可购买
-          </p>
-          <p v-else class="book-status unavailable">状态：已售出</p>
         </div>
       </div>
 
@@ -123,14 +140,25 @@ const viewBookDetail = (bookId: number) => {
   font-weight: bold;
 }
 
+.category-filter {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+}
+
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 动态调整列数 */
+  gap: 20px; /* 保持卡片之间的间距 */
   width: 100%;
+  justify-content: center; /* 确保内容居中 */
 }
 
 .book-card {
+  max-width: 300px; /* 限制卡片的最大宽度 */
+  width: 100%; /* 自适应网格列的宽度 */
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -138,6 +166,16 @@ const viewBookDetail = (bookId: number) => {
   text-align: center;
   cursor: pointer;
   transition: transform 0.3s, box-shadow 0.3s;
+  box-sizing: border-box; /* 确保内外边距不会影响宽度计算 */
+}
+
+.book-card img {
+  display: block; /* 确保图片不会溢出父级容器 */
+  margin: 0 auto; /* 图片居中 */
+  width: 120px; /* 限制图片的宽度 */
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .book-card:hover {
@@ -145,24 +183,16 @@ const viewBookDetail = (bookId: number) => {
   box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
 }
 
-.book-cover {
-  width: 120px;
-  height: auto;
-  margin-bottom: 15px;
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
 .book-title {
   font-size: 1.2rem;
   font-weight: bold;
   margin-bottom: 8px;
   color: #222;
+  word-wrap: break-word; /* 防止标题太长时溢出 */
 }
 
 .book-author,
-.book-price,
-.book-status {
+.book-categories {
   font-size: 1rem;
   margin-bottom: 5px;
   color: #555;
@@ -193,13 +223,5 @@ const viewBookDetail = (bookId: number) => {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-}
-
-.book-status.available {
-  color: green;
-}
-
-.book-status.unavailable {
-  color: red;
 }
 </style>
