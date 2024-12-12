@@ -6,8 +6,8 @@ import type { Order } from '@/types/order';
 import type { Book } from '@/types/book';
 import type { User } from '@/types/user';
 
-// 订单数据及加载状态
-const orderList = ref<Order[]>([]);
+// 初始化订单数据，确保是一个数组
+const orderList = ref<Order[]>([]);  
 const booksMap = ref<Map<number, Book>>(new Map());
 const sellersMap = ref<Map<number, User>>(new Map());
 const loading = ref(true);
@@ -30,7 +30,7 @@ const fetchOrderList = async () => {
     });
 
     if (orderResponse.code === 0) {
-      const orders = orderResponse.data;
+      const orders = Array.isArray(orderResponse.data) ? orderResponse.data : [];  // 确保是数组
       // 获取每个订单的书籍信息和卖家信息
       for (let order of orders) {
         // 获取书籍信息
@@ -38,7 +38,7 @@ const fetchOrderList = async () => {
           const bookResponse = await request.get<Book>(`/api/book/${order.book_id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          booksMap.value.set(order.book_id, bookResponse);
+          booksMap.value.set(order.book_id, bookResponse.data);
         }
 
         // 获取卖家信息
@@ -50,7 +50,7 @@ const fetchOrderList = async () => {
         }
       }
 
-      orderList.value = orders;
+      orderList.value = orders;  // 更新订单数据
     } else {
       errorMessage.value = `获取订单列表失败: ${orderResponse.msg}`;
     }
@@ -171,6 +171,7 @@ const viewOrderDetail = (orderId: number) => {
   router.push(`/order/${orderId}`);
 };
 </script>
+
 <template>
   <div class="order-list">
     <div class="container">
@@ -188,7 +189,7 @@ const viewOrderDetail = (orderId: number) => {
       <div v-if="!loading && orderList.length" class="order-items">
         <div v-for="order in orderList" :key="order.id" class="order-item" @click="viewOrderDetail(order.id)">
           <div class="book-cover" v-if="booksMap.has(order.book_id)">
-            <img :src="booksMap.get(order.book_id)?.cover" alt="Book Cover" />
+            <img :src="booksMap.get(order.book_id)?.cover_url" alt="Book Cover" />
           </div>
           <div class="order-info">
             <h3 class="book-title" v-if="booksMap.has(order.book_id)">

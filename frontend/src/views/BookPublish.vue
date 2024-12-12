@@ -13,6 +13,9 @@ const showModal = ref(false);
 const modalMessage = ref('');
 const router = useRouter();
 
+// 封面图片预览
+const previewImage = ref<string | null>(null);
+
 // 提交发布表单
 const handlePublish = async () => {
   if (!bookTitle.value || !bookAuthor.value || !bookPrice.value || !bookDescription.value) {
@@ -36,7 +39,7 @@ const handlePublish = async () => {
     formData.append('price', bookPrice.value?.toString() || '');
     formData.append('description', bookDescription.value);
     if (bookImage.value) {
-      formData.append('image', bookImage.value);
+      formData.append('cover', bookImage.value);
     }
 
     const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/book/publish`, formData, {
@@ -63,11 +66,23 @@ const handlePublish = async () => {
     console.error('发布失败:', error);
   }
 };
+
+// 封面图片预览
+const handleImageChange = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) {
+    bookImage.value = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      previewImage.value = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
 </script>
 
 <template>
   <div class="publish-container">
-    <!-- 标题 -->
     <h1 class="page-title">发布书籍</h1>
 
     <!-- 表单 -->
@@ -90,9 +105,15 @@ const handlePublish = async () => {
           <textarea v-model="bookDescription" id="description" placeholder="请输入书籍描述"></textarea>
         </div>
         <div class="form-group">
-          <label for="image">上传图片</label>
-          <input @change="e => (bookImage.value = e.target.files[0])" type="file" id="image" accept="image/*" />
+          <label for="image">上传封面图片</label>
+          <input @change="handleImageChange" type="file" id="cover" accept="image/*" />
         </div>
+
+        <!-- 图片预览 -->
+        <div v-if="previewImage" class="image-preview">
+          <img :src="previewImage" alt="封面图片预览" />
+        </div>
+
         <button type="submit" class="publish-btn">发布</button>
       </form>
     </div>
@@ -151,6 +172,10 @@ textarea {
   font-size: 16px;
 }
 
+textarea {
+  min-height: 100px;
+}
+
 .publish-btn {
   width: 100%;
   padding: 12px;
@@ -164,6 +189,18 @@ textarea {
 
 .publish-btn:hover {
   background-color: #45a049;
+}
+
+.image-preview {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .modal-overlay {

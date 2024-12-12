@@ -26,7 +26,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
       type="text"
       class="search-input"
       v-model="searchQuery"
-      placeholder="输入书名或者类别搜索..."
+      placeholder="输入书名或者作者搜索..."
       @keydown="handleKeyDown"
     />
     <!-- 搜索按钮 -->
