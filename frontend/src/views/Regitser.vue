@@ -1,7 +1,7 @@
 <template>
   <div class="home-container">
     <div class="illustration">
-      <img src="../assets/undraw_well_done_re_3hpo.svg" alt="illustration" />
+      <img src="../assets/bg_img01.jpg" alt="illustration" />
     </div>
     <div class="content">
       <div class="login-message">
@@ -15,46 +15,121 @@
             <label for="password">密码:</label>
             <input v-model="user.password" type="password" id="password" placeholder="请输入密码" required />
           </div>
+          <div class="form-group">
+            <label for="email">邮箱:</label>
+            <input v-model="user.email" type="email" id="email" placeholder="请输入邮箱" required />
+            <button type="button" @click="sendVerificationCode" :disabled="isSendingCode">
+              获取验证码
+            </button>
+          </div>
+          <div class="form-group">
+            <label for="code">验证码:</label>
+            <input v-model="user.code" type="text" id="code" placeholder="请输入验证码" required />
+          </div>
           <button type="submit">注册</button>
           <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
         </form>
       </div>
     </div>
+
     <!-- 装饰图案 -->
     <img class="leaf1" src="../assets/green.svg" alt="leaf decoration" />
     <img class="leaf2" src="../assets/green.svg" alt="leaf decoration" />
+
+    <!-- 注册成功弹窗 -->
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="closeModal">&times;</span>
+        <h2>注册成功!</h2>
+        <p>您已经成功注册，点击下面的按钮进行登录。</p>
+        <button @click="redirectToLogin">去登录</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
 import axios from 'axios';
+import { useRouter } from 'vue-router';
 
 const user = reactive({
   username: '',
   password: '',
+  email: '', // 邮箱字段
+  code: '',  // 验证码字段
 });
 
 const errorMessage = ref<string>('');
+const showModal = ref(false); // 控制模态框显示
+const isSendingCode = ref(false); // 控制发送验证码按钮的状态
 
-const handleSubmit = async () => {
+const router = useRouter();
+
+// 发送验证码请求
+const sendVerificationCode = async () => {
+  if (!user.email) {
+    errorMessage.value = '请输入邮箱地址';
+    return;
+  }
+  
+  isSendingCode.value = true;
   try {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/user/register`, user, {
+    const formData = new FormData();
+    formData.append('username', user.username);
+    formData.append('email', user.email);
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/user/code`, formData ,{
+      'Content-Type': 'multipart/form-data',
+    });
+
+    if (response.data.code === 0) {
+      alert('验证码已发送，请查收邮箱！');
+    } else {
+      errorMessage.value = response.data.msg;
+    }
+  } catch (error: any) {
+    errorMessage.value = error.response?.data?.msg || '发送验证码失败';
+  } finally {
+    isSendingCode.value = false;
+  }
+};
+
+// 提交注册请求
+const handleSubmit = async () => {
+  if (!user.code) {
+    errorMessage.value = '请输入验证码';
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('username', user.username);
+    formData.append('password',user.password)
+    formData.append('email', user.email);
+    formData.append('code', user.code); // 加上验证码字段
+
+    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/user/register`, formData, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'multipart/form-data',
       },
     });
 
     if (response.data.code === 0) {
-      alert('注册成功!');
-      // 可以添加跳转到登录页面的逻辑，例如：
-      router.push('/login');
+      showModal.value = true; // 显示注册成功模态框
     } else {
       errorMessage.value = response.data.msg;
     }
   } catch (error: any) {
     errorMessage.value = error.response?.data?.msg || '注册失败';
   }
+};
+
+const closeModal = () => {
+  showModal.value = false;
+};
+
+const redirectToLogin = () => {
+  router.push('/login');
 };
 </script>
 
@@ -257,5 +332,51 @@ button:hover {
   100% {
     transform: translateY(0) rotate(0deg);
   }
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  max-width: 400px;
+  text-align: center;
+}
+
+.modal-content {
+  font-family: 'Arial', sans-serif;
+  color: #333;
+}
+
+.close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+}
+
+button {
+  width: auto;
+  padding: 12px 24px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+button:hover {
+  background-color: #45a049;
 }
 </style>

@@ -69,10 +69,11 @@ const handleLogin = async () => {
       // 显示成功登录的弹窗
       successMessage.value = '登录成功！';
       showSuccessPopup.value = true;
-      setTimeout(() => {
+      window.location.reload();
+      nextTick(() => {
         showSuccessPopup.value = false;
         router.push('/home');  // 跳转到首页
-      }, 2000);
+      });
       
     } else {
       errorMessage.value = response.data.msg || '登录失败，请稍后再试';

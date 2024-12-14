@@ -58,8 +58,8 @@ const testimonials = [
     <!-- 轮播图 -->
     <div class="carousel">
       <div class="carousel-content">
-        <h1 class="carousel-title">Affordable Reads, Sustainable Choices</h1>
-        <p class="carousel-subtitle">Buy and Sell Second-hand Books Easily</p>
+        <h1 class="carousel-title">实惠的读物，可靠的选择</h1>
+        <p class="carousel-subtitle">简便交易二手书</p>
         <button class="start-button" @click="goToTradePage">浏览图书</button>
       </div>
       <img class="carousel-image" :src="images[currentIndex]" alt="Book Image" />

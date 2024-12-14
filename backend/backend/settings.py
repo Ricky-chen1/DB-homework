@@ -94,9 +94,17 @@ DATABASES = {
     #    "HOST": "localhost",
     #    "PORT": 15432,
     #}
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # 使用 SQLite 数据库
-        'NAME': BASE_DIR / "db.sqlite3",  # 数据库文件的路径
+    #'default': {
+    #    'ENGINE': 'django.db.backends.sqlite3',  # 使用 SQLite 数据库
+    #    'NAME': BASE_DIR / "db.sqlite3",  # 数据库文件的路径
+    #}
+    "default": {
+        "ENGINE": "django.db.backends.mysql",  # 使用 MySQL 数据库
+        "NAME": "book_trade",                   # 数据库名称
+        "USER": "root",                        # 数据库用户名
+        "PASSWORD": "Ricky123456",              # 数据库密码
+        "HOST": "127.0.0.1",                    # 数据库主机（如果 MySQL 在本地运行，保持 localhost）
+        "PORT": "3306",                         # MySQL 默认端口
     }
 }
 

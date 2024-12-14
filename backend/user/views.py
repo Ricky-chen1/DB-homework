@@ -20,6 +20,7 @@ def register_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         email = request.POST.get('email')
+        code = request.POST.get('code')
 
         if not username or not password:
             return JsonResponse({"code": 1, "msg": "用户名和密码不能为空！"})
@@ -27,6 +28,10 @@ def register_view(request):
         form = RegisterForm(request.POST)
 
         if form.is_valid():
+            # 验证验证码
+            cached_code = cache.get(f'verification_code_{email}')
+            if cached_code != code:
+                return JsonResponse({"code": 1, "msg": "验证码无效或已过期"})
             form.save()  # 保存表单数据到数据库
             return JsonResponse({"code": 0, "msg": "success"})
         else:
@@ -89,6 +94,7 @@ def send_verification_email(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
+        type = request.POST.get('type')
 
         # 检查用户名和邮箱是否提供
         if not username:
@@ -96,16 +102,17 @@ def send_verification_email(request):
         if not email:
             return JsonResponse({"code": 1, "msg": "邮箱不能为空"})
 
-        try:
-            # 从数据库查询用户
-            user = User.objects.get(username=username)
+        if type == "重置":
+            try:
+                # 从数据库查询用户
+                user = User.objects.get(username=username)
 
-            # 验证邮箱是否匹配
-            if user.email != email:
-                return JsonResponse({"code": 1, "msg": "邮箱与用户名不匹配"})
+                # 验证邮箱是否匹配
+                if user.email != email:
+                    return JsonResponse({"code": 1, "msg": "邮箱与用户名不匹配"})
 
-        except ObjectDoesNotExist:
-            return JsonResponse({"code": 1, "msg": "用户名不存在"})
+            except ObjectDoesNotExist:
+                return JsonResponse({"code": 1, "msg": "用户名不存在"})
 
         # 生成验证码
         verification_code = generate_verification_code()

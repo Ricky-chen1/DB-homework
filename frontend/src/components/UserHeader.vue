@@ -15,7 +15,6 @@
           </ul>
           <div class="tubiao" v-if="isLoggedIn">
             <i class="iconfont icon-gouwuche"></i>
-            <i class="iconfont icon-tixing1"></i>
             <i class="iconfont icon-yonghu" @click="toggleLogout"></i>
   
             <!-- 点击头像图标时显示退出按钮 -->
