@@ -48,7 +48,7 @@ const handleSubmit = async () => {
     if (response.data.code === 0) {
       alert('注册成功!');
       // 可以添加跳转到登录页面的逻辑，例如：
-      // router.push('/login');
+      router.push('/login');
     } else {
       errorMessage.value = response.data.msg;
     }

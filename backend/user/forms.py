@@ -5,10 +5,11 @@ class RegisterForm(forms.ModelForm):
 
     username = forms.CharField(required=True)  # 确保是必填的
     password = forms.CharField(required=True, widget=forms.PasswordInput)  # 同上
+    email = forms.CharField(required=True)
 
     class Meta:
         model = User
-        fields = ['username', 'password']
+        fields = ['username', 'password' ,'email']
 
 
     def save(self, commit=True):

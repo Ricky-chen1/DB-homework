@@ -9,6 +9,7 @@ import OrderCreate from '@/views/OrderCreate.vue';
 import OrderList from '@/views/OrderList.vue';
 import OrderDetail from '@/views/OrderDetail.vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import ResetPassword from '@/views/ResetPassword.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,6 +43,11 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: Register,
+    },
+    {
+      path: '/resetPassword',
+      name:'resetPassword',
+      component: ResetPassword,
     },
     {
       path: '/bookshelf',

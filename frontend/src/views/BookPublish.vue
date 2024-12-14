@@ -8,6 +8,7 @@ const bookTitle = ref('');
 const bookAuthor = ref('');
 const bookPrice = ref<number | null>(null);
 const bookDescription = ref('');
+const selectedCategories = ref<string[]>([]);
 const bookImage = ref<File | null>(null);
 const showModal = ref(false);
 const modalMessage = ref('');
@@ -16,9 +17,15 @@ const router = useRouter();
 // 封面图片预览
 const previewImage = ref<string | null>(null);
 
+// 类别选项
+const categoryOptions = [
+  '教育', '教材', '外语', '考试', '中小学用书', '工具书',
+  '小说', '文艺', '文学', '传记', '艺术', '摄影'
+];
+
 // 提交发布表单
 const handlePublish = async () => {
-  if (!bookTitle.value || !bookAuthor.value || !bookPrice.value || !bookDescription.value) {
+  if (!bookTitle.value || !bookAuthor.value || !bookPrice.value || !bookDescription.value || selectedCategories.value.length === 0) {
     showModal.value = true;
     modalMessage.value = '请填写完整的书籍信息！';
     return;
@@ -38,6 +45,10 @@ const handlePublish = async () => {
     formData.append('author', bookAuthor.value);
     formData.append('price', bookPrice.value?.toString() || '');
     formData.append('description', bookDescription.value);
+    // 直接将多个类别值作为同一字段的多个项传递
+    selectedCategories.value.forEach(category => {
+      formData.append('categories', category);  // 以数组形式传递
+    });
     if (bookImage.value) {
       formData.append('cover', bookImage.value);
     }
@@ -79,6 +90,21 @@ const handleImageChange = (e: Event) => {
     reader.readAsDataURL(file);
   }
 };
+
+// 选择类别
+const toggleCategory = (category: string) => {
+  if (selectedCategories.value.includes(category)) {
+    selectedCategories.value = selectedCategories.value.filter(c => c !== category);
+  } else {
+    selectedCategories.value.push(category);
+  }
+};
+
+// 取消选择封面图片
+const removeImage = () => {
+  bookImage.value = null;
+  previewImage.value = null;
+};
 </script>
 
 <template>
@@ -104,6 +130,23 @@ const handleImageChange = (e: Event) => {
           <label for="description">描述</label>
           <textarea v-model="bookDescription" id="description" placeholder="请输入书籍描述"></textarea>
         </div>
+
+        <!-- 类别选择 -->
+        <div class="form-group categories">
+          <label>选择类别</label>
+          <div class="category-options">
+            <div 
+              v-for="category in categoryOptions" 
+              :key="category" 
+              class="category-option" 
+              :class="{'selected': selectedCategories.includes(category)}"
+              @click="toggleCategory(category)">
+              <span>{{ category }}</span>
+              <span v-if="selectedCategories.includes(category)" class="remove-category">x</span>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
           <label for="image">上传封面图片</label>
           <input @change="handleImageChange" type="file" id="cover" accept="image/*" />
@@ -112,6 +155,7 @@ const handleImageChange = (e: Event) => {
         <!-- 图片预览 -->
         <div v-if="previewImage" class="image-preview">
           <img :src="previewImage" alt="封面图片预览" />
+          <span @click="removeImage" class="remove-image">x</span>
         </div>
 
         <button type="submit" class="publish-btn">发布</button>
@@ -129,8 +173,9 @@ const handleImageChange = (e: Event) => {
 </template>
 
 <style scoped>
+/* 全局背景色和布局 */
 .publish-container {
-  padding: 20px;
+  padding: 40px;
   background: linear-gradient(135deg, #f4f4f9, #e6e6fa);
   min-height: 100vh;
   display: flex;
@@ -142,67 +187,131 @@ const handleImageChange = (e: Event) => {
   font-size: 2.5rem;
   margin-bottom: 30px;
   color: #333;
+  font-family: 'Arial', sans-serif;
 }
 
+/* 表单卡片样式 */
 .form-card {
   background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
 }
 
+/* 表单输入项样式 */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 label {
   display: block;
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 8px;
+  font-size: 1.1rem;
+  color: #4e4e4e;
 }
 
 input,
 textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: 'Arial', sans-serif;
+  transition: border-color 0.3s;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #4caf50;
+  outline: none;
 }
 
 textarea {
-  min-height: 100px;
+  min-height: 120px;
+  resize: vertical;
 }
 
+/* 类别选择 */
+.categories {
+  margin-top: 10px;
+}
+
+.category-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.category-option {
+  padding: 8px 15px;
+  background-color: #f4f4f9;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.category-option.selected {
+  background-color: #4caf50;
+  color: white;
+}
+
+.remove-category {
+  margin-left: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #f44336;
+}
+
+/* 图片预览样式 */
+.image-preview {
+  margin-top: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 12px;
+  object-fit: contain;
+  border: 2px solid #ddd;
+  padding: 5px;
+}
+
+.remove-image {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  padding: 5px;
+  cursor: pointer;
+}
+
+/* 发布按钮样式 */
 .publish-btn {
   width: 100%;
-  padding: 12px;
+  padding: 15px;
   background-color: #4caf50;
   color: white;
   border: none;
-  border-radius: 5px;
-  font-size: 18px;
+  border-radius: 10px;
+  font-size: 1.2rem;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .publish-btn:hover {
   background-color: #45a049;
 }
 
-.image-preview {
-  margin-top: 10px;
-  text-align: center;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  object-fit: contain;
-}
-
+/* 弹窗样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -217,21 +326,22 @@ textarea {
 
 .modal {
   background: white;
-  padding: 20px;
-  border-radius: 10px;
+  padding: 30px;
+  border-radius: 15px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
 }
 
 .modal-btn {
-  margin-top: 15px;
-  padding: 10px 20px;
+  margin-top: 20px;
+  padding: 12px 25px;
   background: #4caf50;
   color: white;
   border: none;
-  border-radius: 5px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 1rem;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .modal-btn:hover {

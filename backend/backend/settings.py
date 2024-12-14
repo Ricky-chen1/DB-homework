@@ -100,6 +100,14 @@ DATABASES = {
     }
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.163.com'  # 替换为您的 SMTP 服务器
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = 'ricky__chen1@163.com'
+EMAIL_HOST_PASSWORD = 'YBsmtLUxMBPM6EFP'
+EMAIL_FROM = EMAIL_HOST_USER
+
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 

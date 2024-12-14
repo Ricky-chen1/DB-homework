@@ -18,7 +18,8 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser):
     id = models.AutoField(primary_key=True)  # 显式定义主键
-    username = models.CharField(max_length=150, unique=True)
+    username = models.CharField(max_length=128, unique=True)
+    email = models.CharField(max_length=128,unique=True)
     password = models.CharField(max_length=128)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -12,6 +12,10 @@ const errorMessage = ref('');
 const isLoggedIn = ref(false);  
 const loggedInUsername = ref('');  // 用于存储已登录的用户名
 
+// 控制成功登录弹窗
+const showSuccessPopup = ref(false);
+const successMessage = ref('');
+
 // 用 router 实例进行页面跳转
 const router = useRouter();
 
@@ -62,11 +66,14 @@ const handleLogin = async () => {
       loggedInUsername.value = username.value;
       isLoggedIn.value = true;
 
-      alert('登录成功');
+      // 显示成功登录的弹窗
+      successMessage.value = '登录成功！';
+      showSuccessPopup.value = true;
+      setTimeout(() => {
+        showSuccessPopup.value = false;
+        router.push('/home');  // 跳转到首页
+      }, 2000);
       
-      // 刷新页面并跳转到首页
-      window.location.reload();  // 刷新页面
-      router.push('/home');  // 跳转到首页
     } else {
       errorMessage.value = response.data.msg || '登录失败，请稍后再试';
     }
@@ -88,12 +95,16 @@ const handleLogout = () => {
 const goToRegister = () => {
   router.push('/register');
 };
+
+const goToResetPassword = () => {
+  router.push('/resetPassword');
+};
 </script>
 
 <template>
   <div class="home-container">
     <div class="illustration">
-      <img src="../assets/undraw_open_note_cgre.svg" alt="illustration" />
+      <img src="../assets/bg_img01.jpg" alt="illustration" />
     </div>
     <div class="content">
       <div v-if="isLoggedIn" class="welcome-message">
@@ -133,14 +144,21 @@ const goToRegister = () => {
         <div class="register-link">
           <p>没有账号？ <a href="#" @click.prevent="goToRegister">去注册</a></p>
         </div>
+
+        <div>
+          <a href="#" @click.prevent="goToResetPassword">忘记密码？</a>
+        </div>
       </div>
+      
+      <!-- 成功登录弹窗 -->
+      <div v-if="showSuccessPopup" class="popup">{{ successMessage }}</div>
+      
     </div>
     <!-- 装饰图案 -->
     <img class="leaf1" src="../assets/green.svg" alt="leaf decoration" />
     <img class="leaf2" src="../assets/green.svg" alt="leaf decoration" />
   </div>
 </template>
-
 
 <style scoped>
 .home-container {
@@ -277,7 +295,31 @@ input::placeholder {
   text-decoration: underline;
 }
 
-/* 装饰图案 */
+/* 成功登录弹窗 */
+.popup {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  font-size: 18px;
+  animation: fadeIn 1s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .leaf1, .leaf2 {
   position: absolute;
   top: 30px;
@@ -301,7 +343,6 @@ input::placeholder {
   animation: floatLeaf2 8s infinite;
 }
 
-/* 动画效果 */
 @keyframes floatLeaf1 {
   0% {
     transform: translateY(0) rotate(0deg);
@@ -335,43 +376,6 @@ input::placeholder {
   }
   100% {
     transform: translateY(0) rotate(0deg);
-  }
-}
-
-@media (max-width: 768px) {
-  .home-container {
-    padding: 15px;
-  }
-
-  .illustration {
-    display: none; /* 移动端不显示插画 */
-  }
-
-  .content {
-    margin-left: 0;
-  }
-
-  .welcome-message,
-  .login-message {
-    padding: 20px;
-    max-width: 90%;
-  }
-
-  h2 {
-    font-size: 24px;
-  }
-
-  button {
-    font-size: 16px;
-  }
-
-  input {
-    padding: 10px;
-  }
-
-  .leaf1, .leaf2 {
-    width: 150px;
-    height: 150px;
   }
 }
 </style>
