@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.forms import ModelForm
 from django.utils.timezone import now
-from .models import Book, Category
+from .models import Book, Category, BookCategory
 from rest_framework_simplejwt.tokens import AccessToken
 from utils.jwt import verify_and_refresh_token
 from django.db.models import Q
@@ -22,20 +22,20 @@ class CreateBookForm(ModelForm):
 
 @csrf_exempt
 def create_book_view(request):
-    """Create book view"""
+    """Handle book creation via POST request"""
     if request.method == 'POST':
-        # 验证并刷新 token
+        # Validate and refresh the token
         try:
             token = verify_and_refresh_token(request)
             access_token = AccessToken(token)
-            user_id = access_token['user_id']
+            user_id = access_token['user_id']  # Extract user ID from the token
         except Exception as e:
-            return JsonResponse({"code": 1, "msg": f"Token 验证失败: {str(e)}"})
+            return JsonResponse({"code": 1, "msg": f"Token validation failed: {str(e)}"})
 
-        # 获取请求数据
+        # Extract data from the POST request
         title = request.POST.get('title')
         author = request.POST.get('author')
-        cover = request.FILES.get('cover')  # 获取上传的文件
+        cover = request.FILES.get('cover')  # Uploaded cover file
         description = request.POST.get('description', '')
         price = request.POST.get('price')
         categories = request.POST.getlist('categories')
@@ -43,7 +43,7 @@ def create_book_view(request):
         if not title or not author or not price:
             return JsonResponse({"code": 1, "msg": "Missing required parameters"})
 
-        # 保存图书数据
+        # Prepare book data for creation
         book_data = {
             'publisher': user_id,
             'title': title,
@@ -53,37 +53,28 @@ def create_book_view(request):
             'status': 'available',
         }
 
+        # Validate data using the form
         form = CreateBookForm(book_data)
-
         if form.is_valid():
-            book = form.save(commit=False)
+            book = form.save(commit=False)  # Create a book instance without saving
             book.publisher_id = user_id
-            book.created_at = now()
+            book.created_at = now()  # Set the creation timestamp
 
-            # 上传封面图片到 PicGo 服务器
+            # Upload cover image to PicGo server
             cover_url = None
             if cover:
                 cover_url = upload_image_to_picgo(cover)
 
             if cover_url:
-                book.cover_url = cover_url  # 将 PicGo 返回的 URL 存储到数据库
+                book.cover_url = cover_url  # Save the PicGo URL
 
-            book.save()
+            book.save()  # Save the book instance to the database
 
-            # 处理类别
+            # Handle categories
             if categories:
-                category_ids = []
                 for category_name in categories:
-                    try:
-                        category = Category.objects.get(name=category_name)
-                        category_ids.append(category.id)
-                    except Category.DoesNotExist:
-                        category = Category.objects.create(name=category_name)
-                        category_ids.append(category.id)
-
-                book.categories.set(category_ids)
-
-            categories_names = [category.name for category in book.categories.all()]
+                    category, _ = Category.objects.get_or_create(name=category_name)
+                    BookCategory.objects.create(book=book, category=category)
 
             return JsonResponse({
                 "code": 0,
@@ -92,7 +83,7 @@ def create_book_view(request):
                     "id": book.id,
                     "title": book.title,
                     "author": book.author,
-                    "categories": categories_names,
+                    "categories": categories,
                     "price": str(book.price),
                     "status": book.status,
                     "created_at": book.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -105,52 +96,46 @@ def create_book_view(request):
     return JsonResponse({"code": 1, "msg": "Invalid request method"})
 
 def upload_image_to_picgo(cover_file):
-    """将文件上传到 PicGo 服务器并返回 URL"""
+    """Upload a file to PicGo server and return its URL"""
     try:
-        # 获取用户上传文件的扩展名
-        original_extension = os.path.splitext(cover_file.name)[1]  # 获取上传文件的扩展名
+        # Get the original file extension
+        original_extension = os.path.splitext(cover_file.name)[1]
         if not original_extension:
             raise ValueError("Uploaded file does not have a valid extension.")
 
-        # 创建临时文件，并确保使用正确的扩展名
+        # Create a temporary file with the correct extension
         with tempfile.NamedTemporaryFile(suffix=original_extension, delete=False) as temp_file:
             for chunk in cover_file.chunks():
-                temp_file.write(chunk)
+                temp_file.write(chunk)  # Write chunks to the temporary file
             
-            temp_file_path = temp_file.name  # 临时文件路径
-            print(f"Uploading file from path: {temp_file_path}")
+            temp_file_path = temp_file.name  # Path to the temporary file
 
-            # 构建 JSON 请求体
-            data = json.dumps({'list': [temp_file_path]})  # 文件路径以 JSON 格式传递
-            
+            # Prepare JSON request body
+            data = json.dumps({'list': [temp_file_path]})
             headers = {'Content-Type': 'application/json'}
 
-            # 发送 POST 请求到 PicGo
+            # Send POST request to PicGo
             response = requests.post(PICGO_UPLOAD_URL, data=data, headers=headers)
 
             if response.status_code == 200:
                 result = response.json()
-                print(f"PicGo response: {result}")
                 if result.get('success'):
-                    return result.get('result')[0]  # 返回上传后的图片 URL
+                    return result.get('result')[0]  # Return the uploaded image URL
                 else:
-                    print(f"PicGo upload failed: {result.get('message')}")
                     return None
             else:
-                print(f"HTTP Error from PicGo: {response.status_code}")
                 return None
 
     except Exception as e:
-        print(f"Error uploading file: {e}")
         return None
     finally:
-        # 删除临时文件
+        # Clean up the temporary file
         if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
 @csrf_exempt
 def book_list_view(request):
-    """Book list view"""
+    """Return a list of books via GET request"""
     if request.method == 'GET':
         books = Book.objects.prefetch_related('categories') \
             .values(
@@ -164,53 +149,174 @@ def book_list_view(request):
                 'cover_url'
             )
 
-        # 处理每本书，确保 categories 以正确的形式返回
+        # Build the response with category names for each book
         book_list = []
         for book in books:
-            # 通过 book.categories.all() 提取类别名称
-            categories_names = [category.name for category in Book.objects.get(id=book['id']).categories.all()]
+            categories_names = [
+                category.name for category in 
+                Category.objects.filter(bookcategory__book_id=book['id'])
+            ]
             book_data = book
-            book_data['categories'] = categories_names  # 只保留类别名称
+            book_data['categories'] = categories_names  # Include category names
             book_list.append(book_data)
 
         return JsonResponse({"code": 0, "data": book_list})
 
     return JsonResponse({"code": 1, "msg": "Invalid request method"})
 
-
 @csrf_exempt
 def book_detail_view(request, book_id):
-    """Book detail view"""
+    """Return details of a single book via GET request"""
     if request.method == 'GET':
         try:
-            # 使用 filter() 获取 Book，确保只获取一个
-            book = Book.objects.prefetch_related('categories') \
-                .values(
-                    'id', 
-                    'title',
-                    'publisher_id',
-                    'author', 
-                    'description', 
-                    'price', 
-                    'status', 
-                    'created_at',
-                    'cover_url'
-                ).filter(id=book_id).first()  # 只取第一个匹配的书籍
+            book = Book.objects.filter(id=book_id).values(
+                'id', 
+                'title',
+                'publisher_id',
+                'author', 
+                'description', 
+                'price', 
+                'status', 
+                'created_at',
+                'cover_url'
+            ).first()
 
             if not book:
                 return JsonResponse({"code": 1, "msg": "Book does not exist"})
 
-            # 获取类别名称
-            categories_names = [category.name for category in Book.objects.get(id=book['id']).categories.all()]
+            # Retrieve categories associated with the book
+            categories_names = [
+                category.name for category in 
+                Category.objects.filter(bookcategory__book_id=book['id'])
+            ]
 
-            # 返回书籍数据
-            book_data = book
-            book_data['categories'] = categories_names  # 添加类别名称
+            book['categories'] = categories_names
 
-            return JsonResponse({"code": 0, "data": book_data})
+            return JsonResponse({"code": 0, "data": book})
 
         except Exception as e:
             return JsonResponse({"code": 1, "msg": f"Error: {str(e)}"})
+
+    return JsonResponse({"code": 1, "msg": "Invalid request method"})
+
+@csrf_exempt
+def search_books_view(request):
+    """Search books by title or category name using a query parameter"""
+    if request.method == 'GET':
+        query = request.GET.get('query', '').strip()  # Get the search query
+
+        if not query:
+            return JsonResponse({"code": 1, "msg": "Query parameter is required"})
+
+        # Build filter criteria for title and category name
+        filter_args = (
+            Q(title__icontains=query) | Q(bookcategory__category__name__icontains=query)
+        )
+
+        # Fetch matching books with related categories
+        books = Book.objects.prefetch_related('categories') \
+            .filter(filter_args) \
+            .distinct()  # Avoid duplicate results
+
+        # Extract book details and category names
+        book_list = []
+        for book in books:
+            categories_names = [
+                category.name for category in 
+                Category.objects.filter(bookcategory__book_id=book.id)
+            ]
+            book_data = {
+                "id": book.id,
+                "title": book.title,
+                "publisher_id": book.publisher_id,
+                "author": book.author,
+                "price": str(book.price),
+                "status": book.status,
+                "cover_url": book.cover_url,
+                "created_at": book.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "categories": categories_names,
+            }
+            book_list.append(book_data)
+
+        return JsonResponse({"code": 0, "data": book_list})
+
+    return JsonResponse({"code": 1, "msg": "Invalid request method"})
+
+@csrf_exempt
+def published_books_view(request):
+    """Get list of all published books by the current user"""
+    if request.method == 'GET':
+        try:
+            token = verify_and_refresh_token(request)
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # Extract user ID from the token
+        except Exception as e:
+            return JsonResponse({"code": 1, "msg": f"Token verification failed: {str(e)}"})
+
+        # Fetch books published by the user
+        books = Book.objects.prefetch_related('categories') \
+            .filter(publisher_id=user_id) \
+            .values(
+                'id', 
+                'title', 
+                'author', 
+                'price', 
+                'status', 
+                'cover_url',
+                'created_at'
+            )
+
+        # Include category names
+        book_list = []
+        for book in books:
+            categories_names = [
+                category.name for category in 
+                Category.objects.filter(bookcategory__book_id=book['id'])
+            ]
+            book_data = book
+            book_data['categories'] = categories_names
+            book_list.append(book_data)
+
+        return JsonResponse({"code": 0, "data": book_list})
+
+    return JsonResponse({"code": 1, "msg": "Invalid request method"})
+
+@csrf_exempt
+def sold_out_books_view(request):
+    """Get sold-out books published by the current user"""
+    if request.method == 'GET':
+        try:
+            token = verify_and_refresh_token(request)
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']  # Extract user ID from the token
+        except Exception as e:
+            return JsonResponse({"code": 1, "msg": f"Token verification failed: {str(e)}"})
+
+        # Fetch sold books published by the user
+        books = Book.objects.prefetch_related('categories') \
+            .filter(publisher_id=user_id, status='sold') \
+            .values(
+                'id', 
+                'title', 
+                'author', 
+                'price', 
+                'status', 
+                'cover_url',
+                'created_at'
+            )
+
+        # Include category names
+        book_list = []
+        for book in books:
+            categories_names = [
+                category.name for category in 
+                Category.objects.filter(bookcategory__book_id=book['id'])
+            ]
+            book_data = book
+            book_data['categories'] = categories_names
+            book_list.append(book_data)
+
+        return JsonResponse({"code": 0, "data": book_list})
 
     return JsonResponse({"code": 1, "msg": "Invalid request method"})
 
@@ -299,121 +405,4 @@ def delete_book_view(request, book_id):
             return JsonResponse({"code": 1, "msg": "书籍不存在"})
 
     return JsonResponse({"code": 1, "msg": "无效的请求方法"})
-
-@csrf_exempt
-def search_books_view(request):
-    """通过一个 query 参数模糊匹配书籍的标题或类别"""
-    if request.method == 'GET':
-        query = request.GET.get('query', '').strip()  # 获取查询参数
-
-        if not query:
-            return JsonResponse({"code": 1, "msg": "必须提供查询参数"})
-
-        # 构建查询过滤条件，title 和 categories 都进行模糊匹配
-        filter_args = (
-            Q(title__icontains=query) | Q(categories__name__icontains=query)  # 标题和类别名模糊匹配
-        )
-
-        # 获取符合条件的书籍，预加载 categories 字段，并去重
-        books = Book.objects.prefetch_related('categories') \
-            .filter(filter_args) \
-            .distinct()  # 去重，避免重复返回相同书籍
-        # 使用 values 获取书籍数据和类别名称
-        books = books.values(
-            'id', 
-            'title', 
-            'publisher_id',
-            'author', 
-            'price', 
-            'status', 
-            'cover_url',
-            'created_at'
-        )
-
-        # 处理书籍数据并将类别名称添加到书籍信息中
-        book_list = []
-        for book in books:
-            categories_names = [category.name for category in Book.objects.get(id=book['id']).categories.all()]
-            book_data = book
-            book_data['categories'] = categories_names  # 添加类别名称
-            book_list.append(book_data)
-
-        return JsonResponse({"code": 0, "data": book_list})
-
-    return JsonResponse({"code": 1, "msg": "无效的请求方法"})
-
-@csrf_exempt
-def published_books_view(request):
-    """Get list of all published books by current user"""
-    if request.method == 'GET':
-        # Verify and refresh token
-        try:
-            token = verify_and_refresh_token(request)
-            access_token = AccessToken(token)
-            user_id = access_token['user_id']  # Get the user_id from the token
-        except Exception as e:
-            return JsonResponse({"code": 1, "msg": f"Token verification failed: {str(e)}"})
-
-        books = Book.objects.prefetch_related('categories') \
-            .filter(publisher_id=user_id) \
-            .values(
-                'id', 
-                'publisher_id',
-                'title', 
-                'author', 
-                'price', 
-                'status', 
-                'cover_url',
-                'created_at'
-            )
-
-        # Process the books and include category names
-        book_list = []
-        for book in books:
-            categories_names = [category.name for category in Book.objects.get(id=book['id']).categories.all()]
-            book_data = book
-            book_data['categories'] = categories_names
-            book_list.append(book_data)
-
-        return JsonResponse({"code": 0, "data": book_list})
-
-    return JsonResponse({"code": 1, "msg": "Invalid request method"})
-
-@csrf_exempt
-def sold_out_books_view(request):
-    """Get sold-out books published by current user"""
-    if request.method == 'GET':
-        # Verify and refresh token
-        try:
-            token = verify_and_refresh_token(request)
-            access_token = AccessToken(token)
-            user_id = access_token['user_id']  # Get the user_id from the token
-        except Exception as e:
-            return JsonResponse({"code": 1, "msg": f"Token verification failed: {str(e)}"})
-
-        books = Book.objects.prefetch_related('categories') \
-            .filter(publisher_id=user_id, status='sold') \
-            .values(
-                'id', 
-                'publisher_id',
-                'title', 
-                'author', 
-                'price', 
-                'status', 
-                'cover_url',
-                'created_at'
-            )
-
-        # Process the books and include category names
-        book_list = []
-        for book in books:
-            categories_names = [category.name for category in Book.objects.get(id=book['id']).categories.all()]
-            book_data = book
-            book_data['categories'] = categories_names
-            book_list.append(book_data)
-
-        return JsonResponse({"code": 0, "data": book_list})
-
-    return JsonResponse({"code": 1, "msg": "Invalid request method"})
-
 
